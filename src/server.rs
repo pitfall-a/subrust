@@ -194,7 +194,6 @@ fn save_group(group: &str, proxies_name: &Vec<String>) -> Result<RuleGroup, Box<
         }
         None => (),
     }
-    println!("{}",rule_group.group_name);
     Ok(rule_group)
 }
 
@@ -231,7 +230,7 @@ mod tests {
         let path = "https://raw.githubusercontent.com/pitfall-a/ruleClash/refs/heads/main/config.ini".to_string();
         let proxies = vec!["美国 02".to_string(),"美国 08".to_string()];
         match analyze_rule_template(&path, &proxies).await {
-            Ok((group,rules)) => (),
+            Ok((group,rules)) => println!("Error occurred: {:?},{:?}", group,rules),
             Err(e) => println!("Error occurred: {}", e),
         }
     }

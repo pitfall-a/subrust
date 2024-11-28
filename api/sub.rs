@@ -1,20 +1,19 @@
-use crate::enetity::SubInput;
-use crate::server::sub_server;
-use std::error::Error;
+use sub_rust::{server::sub_server,enetity::SubInput};
+// use std::error::Error;
 use url::form_urlencoded;
-use vercel_runtime::{Body, Request, Response};
+// use vercel_runtime::{Body, Request, Response};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    // 使用 vercel_runtime 启动应用程序
-    vercel_runtime::run(|req: Request| async move {
-        match req.method().as_str() {
-            "GET" => handle_get(req).await,   // 处理 GET 请求
-            _ => handle_method_not_allowed(), // 处理其他请求方法
-        }
-    })
-    .await
-}
+// #[tokio::main]
+// async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+//     // 使用 vercel_runtime 启动应用程序
+//     vercel_runtime::run(|req: Request| async move {
+//         match req.method().as_str() {
+//             "GET" => handle_get(req).await,   // 处理 GET 请求
+//             _ => handle_method_not_allowed(), // 处理其他请求方法
+//         }
+//     })
+//     .await
+// }
 
 // 处理 GET 请求
 async fn handle_get(req: Request) -> Result<Response<Body>, Box<dyn Error + Send + Sync>> {
@@ -66,4 +65,19 @@ fn handle_method_not_allowed() -> Result<Response<Body>, Box<dyn Error + Send + 
         .status(405)
         .header("Content-Type", "text/plain")
         .body(Body::from("Method Not Allowed"))?)
+}
+use vercel_runtime::{Body, Request, Response};
+use std::error::Error;
+use vercel_runtime::run;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error  + Send + Sync>> {
+    run(handler).await
+}
+
+pub async fn handler(_req: Request) -> Result<Response<Body>, Box<dyn Error  + Send + Sync>> {
+            match _req.method().as_str() {
+            "GET" => handle_get(_req).await,  
+            _ => handle_method_not_allowed(),
+        }
 }

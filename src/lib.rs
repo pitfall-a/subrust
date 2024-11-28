@@ -1,10 +1,4 @@
 mod constant;
-mod enetity;
-mod server;
+pub mod enetity;
+pub mod server;
 mod tools;
-
-pub mod api {
-    pub mod sub {
-        include!("../api/sub.rs");
-    }
-}

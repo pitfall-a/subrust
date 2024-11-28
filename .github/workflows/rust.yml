@@ -1,0 +1,32 @@
+name: Build and Deploy Rust App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    name: Rust project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build the project
+        run: cargo build --release
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel-rust  # 安装 vercel-rust
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel --prod --yes --token $VERCEL_TOKEN  # 部署到 Vercel
