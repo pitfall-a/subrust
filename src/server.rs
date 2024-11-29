@@ -29,8 +29,7 @@ pub async fn sub_server(data: SubInput) -> RespInfo {
             }
         }
     };
-    let coll_sub_data: Vec<Mapping> =
-        proxies.iter().map(|item| item.sub_data.clone()).collect();
+    let coll_sub_data: Vec<Mapping> = proxies.iter().map(|item| item.sub_data.clone()).collect();
     let clash_config: ClashProxyConfig = generate_clash(coll_sub_data, groups, rules);
     RespInfo {
         code: 200,
@@ -57,7 +56,7 @@ fn generate_clash(
         allow_lan: constant::clash_constant::ALLOW_LAN,
         mode: constant::clash_constant::MODE.to_string(),
         log_level: constant::clash_constant::LOG_LEVEL.to_string(),
-        external_controller: constant::clash_constant::EXTERNAL_CONTROLLER,
+        external_controller: constant::clash_constant::EXTERNAL_CONTROLLER.to_string(),
         dns: Dns {
             enabled: constant::clash_constant::DNS_ENABLED,
             nameserver: constant::clash_constant::DNS_NAMESERVER
@@ -130,18 +129,25 @@ async fn save_rules(
     let rule_configs: Vec<&str> = rule_config
         .lines()
         .map(|m| m.trim())
-        .filter(|line| !line.is_empty())
-        .filter(|line| !line.starts_with('#'))
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .collect();
     for config in rule_configs {
         let mut rule_fields: Vec<&str> = config.split(',').collect();
-        if rule_fields.len()>1 {
+        if rule_fields.len() > 1 {
             rule_fields.insert(2, group_name);
-        }else{
+        } else {
             rule_fields.insert(1, group_name);
         }
-        
-        rules.push(rule_fields.join(","));
+
+        if constant::clash_constant::FORMAT_RULE_TYPE.contains(
+            &rule_fields
+                .get(0)
+                .ok_or("错误的规则格式")?
+                .to_uppercase()
+                .as_str(),
+        ) {
+            rules.push(rule_fields.join(","));
+        }
     }
     Ok(())
 }
@@ -209,60 +215,14 @@ async fn analyze_source(source_path: &String) -> Result<Vec<Proxy>, Box<dyn Erro
 }
 #[cfg(test)]
 mod tests {
-    use unicode_normalization::UnicodeNormalization;
 
-    use crate::{
-        server::{sub_server,SubInput},
-        tools::decode_base64,
-    };
-
-    use super::{analyze_rule_template, analyze_source, Proxy};
-    #[tokio::test]
-    async fn test_sub_server() {
-        let sub_input = SubInput{ target: "clash".to_string(), rule_config: "https://raw.githubusercontent.com/pitfall-a/ruleClash/refs/heads/main/config.ini".to_string(), source: "https://linka.lmscunb.cc:2087/api/v1/client/subscribe?token=79592b32b1b77c402eeed56f9ce1ca92".to_string() };
-        let response = sub_server(sub_input).await;
-        println!("{}",response.code);
-        println!("{}",response.body);
-    }
-
-    #[tokio::test]
-    async fn test_analyze_template() {
-        let path = "https://raw.githubusercontent.com/pitfall-a/ruleClash/refs/heads/main/config.ini".to_string();
-        let proxies = vec!["美国 02".to_string(),"美国 08".to_string()];
-        match analyze_rule_template(&path, &proxies).await {
-            Ok((group,rules)) => println!("Error occurred: {:?},{:?}", group,rules),
-            Err(e) => println!("Error occurred: {}", e),
-        }
-    }
-
-
-    #[tokio::test]
-    async fn test_analyze_source() {
-        let source_path = String::from("https://linka.lmscunb.cc:2087/api/v1/client/subscribe?token=79592b32b1b77c402eeed56f9ce1ca92");
-        match analyze_source(&source_path).await {
-            Ok(result) => println!("Analyze result: {:?}", result),
-            Err(e) => println!("Error occurred: {}", e),
-        }
-    }
-
+    use crate::constant;
     #[test]
-    fn test_decode_base64() {
-        let pass_type =
-            decode_base64("YWVzLTEyOC1nY206MDMxYzJjMDgtYjliYy00YjMwLTgxNjQtMzkzYzU4YTNjYTRi")
-                .unwrap();
-        let mut pass_cipher = pass_type.split(":");
-        println!("{}", pass_cipher.next().ok_or("efefeef").unwrap());
-        println!("{}", pass_cipher.next().ok_or("efefeef").unwrap());
-    }
-
-    #[test]
-    fn test_enum_type() {
-        let proxy = Proxy::from_str("trojan://031c2c08-b9bc-4b30-8164-393c58a3ca4b@lmnode-ixd3fh2v5uqlv3z-lmhk.lma1b2.com:53401?allowInsecure=1#%E6%9C%80%E6%96%B0%E7%BD%91%E5%9D%80%EF%BC%9Almspeed.co").unwrap();
-        println!("{:?}", proxy.sub_data);
-    }
-    #[test]
-    fn test_emoji(){
-        let emo:String = "♻\u{fe0f} 自动选择".nfc().collect();
-        println!("{}",emo)
+    fn test_contains() {
+        let qaz = "USER-agent";
+        println!("{}", qaz.to_uppercase());
+        let wsx =
+            constant::clash_constant::FORMAT_RULE_TYPE.contains(&(qaz.to_uppercase().as_str()));
+        println!("{wsx}")
     }
 }

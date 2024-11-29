@@ -67,10 +67,12 @@ impl ProxyType {
     }
     fn insert_map(&self, caps: Captures<'_>) -> Result<Mapping, Box<dyn Error>> {
         let mut soucrces: Mapping = Mapping::new();
-        soucrces.insert(Value::from("udp"), Value::from(true));
-        soucrces.insert(Value::from("type"), Value::from(self.as_str()));
         match self {
             ProxyType::Trojan => {
+                soucrces.insert(
+                    Value::from("name"),
+                    Value::from(decode_url_param(&(caps["remark"].to_string()))),
+                );
                 soucrces.insert(
                     Value::from("password"),
                     Value::from(caps["password"].to_string()),
@@ -79,16 +81,16 @@ impl ProxyType {
                     Value::from("server"),
                     Value::from(caps["address"].to_string()),
                 );
-                soucrces.insert(Value::from("port"), Value::from(caps["port"].to_string()));
-                soucrces.insert(
-                    Value::from("name"),
-                    Value::from(decode_url_param(&(caps["remark"].to_string()))),
-                );
+                soucrces.insert(Value::from("port"), Value::from(caps["port"].parse::<u32>()?));
                 soucrces.insert(Value::from("skip-cert-verify"), Value::from(false));
             }
             ProxyType::SS => {
                 let d_p_c = decode_base64(caps["password"].to_string().as_str())?;
                 let mut cipher_pass = d_p_c.split(":");
+                soucrces.insert(
+                    Value::from("name"),
+                    Value::from(decode_url_param(&(caps["remark"].to_string()))),
+                );
                 soucrces.insert(
                     Value::from("cipher"),
                     Value::from(
@@ -111,13 +113,12 @@ impl ProxyType {
                     Value::from("server"),
                     Value::from(caps["address"].to_string()),
                 );
-                soucrces.insert(Value::from("port"), Value::from(caps["port"].to_string()));
-                soucrces.insert(
-                    Value::from("name"),
-                    Value::from(decode_url_param(&(caps["remark"].to_string()))),
-                );
+                soucrces.insert(Value::from("port"), Value::from(caps["port"].parse::<u32>()?));
+                
             }
         }
+        soucrces.insert(Value::from("udp"), Value::from(true));
+        soucrces.insert(Value::from("type"), Value::from(self.as_str()));
         Ok(soucrces)
     }
     pub fn from_str(s: &str) -> Option<Self> {
@@ -162,11 +163,13 @@ pub struct ClashProxyConfig {
     pub port: u32,
     #[serde{rename="socks-port"}]
     pub socks_port: u32,
+    #[serde{rename="allow-lan"}]
     pub allow_lan: bool,
     pub mode: String,
+    #[serde{rename="log-level"}]
     pub log_level: String,
     #[serde{rename="external-controller"}]
-    pub external_controller: u32,
+    pub external_controller: String,
     pub dns: Dns,
     pub proxies: Vec<Mapping>,
     #[serde{rename="proxy-groups"}]
