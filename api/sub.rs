@@ -1,20 +1,5 @@
 use sub_rust::{server::sub_server,enetity::SubInput};
-// use std::error::Error;
 use url::form_urlencoded;
-// use vercel_runtime::{Body, Request, Response};
-
-// #[tokio::main]
-// async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-//     // 使用 vercel_runtime 启动应用程序
-//     vercel_runtime::run(|req: Request| async move {
-//         match req.method().as_str() {
-//             "GET" => handle_get(req).await,   // 处理 GET 请求
-//             _ => handle_method_not_allowed(), // 处理其他请求方法
-//         }
-//     })
-//     .await
-// }
-
 // 处理 GET 请求
 async fn handle_get(req: Request) -> Result<Response<Body>, Box<dyn Error + Send + Sync>> {
     // 获取请求的 URI 并解析
@@ -43,7 +28,7 @@ async fn handle_get(req: Request) -> Result<Response<Body>, Box<dyn Error + Send
     // 返回 200 响应
     Ok(Response::builder()
         .status(resp.code)
-        .header("Content-Type", "text/plain")
+        .header("Content-Type", "text/plain; charset=utf-8")
         .body(Body::from(resp.body))?)
 }
 
