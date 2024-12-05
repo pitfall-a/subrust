@@ -2,6 +2,7 @@ use crate::{constant, tools};
 use std::error::Error;
 
 use super::enetity::*;
+use futures::future::try_join_all;
 use regex::Regex;
 use reqwest::Client;
 use serde_yaml::{self, Mapping};
@@ -88,35 +89,37 @@ async fn analyze_rule_template(
         .collect();
     let mut rule_grpups: Vec<RuleGroup> = Vec::new();
     let mut rules: Vec<String> = Vec::new();
+    let mut tasks = Vec::new();
     for g_or_r in group_rules {
         let mut r_or_g_s = g_or_r.split("=");
         let mut ini_format_err = String::from("ini配置文件格式错误,错误行内容:");
         ini_format_err.push_str(&g_or_r);
 
-        let _ = match r_or_g_s.next().ok_or(ini_format_err.as_str())? {
+        match r_or_g_s.next().ok_or(ini_format_err.as_str())? {
             "ruleset" => {
-                save_rules(
+                tasks.push(save_rules(
                     r_or_g_s.next().ok_or(ini_format_err.as_str())?,
-                    &mut rules,
                     &client,
-                )
-                .await
-            }
-            "custom_proxy_group" => Ok(rule_grpups.push(save_group(
+                ))
+            },
+            "custom_proxy_group" => rule_grpups.push(save_group(
                 r_or_g_s.next().ok_or(ini_format_err.as_str())?,
                 &proxies_name,
-            )?)),
-            _ => Ok(()),
+            )?),
+            _ => (),
         };
     }
+    for task_result in try_join_all(tasks).await?{
+        rules.extend(task_result);
+    };
     Ok((rule_grpups, rules))
 }
 
 async fn save_rules(
     rule: &str,
-    rules: &mut Vec<String>,
     client: &Client,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut rules: Vec<String> = Vec::new();
     let mut fields = rule.split(',');
     let err_ini_rule = "ini配置文件中规则格式有误:规则组,规则地址";
     let group_name = fields.next().ok_or(err_ini_rule)?;
@@ -149,7 +152,7 @@ async fn save_rules(
             rules.push(rule_fields.join(","));
         }
     }
-    Ok(())
+    Ok(rules)
 }
 
 fn save_group(group: &str, proxies_name: &Vec<String>) -> Result<RuleGroup, Box<dyn Error>> {
@@ -216,7 +219,9 @@ async fn analyze_source(source_path: &String) -> Result<Vec<Proxy>, Box<dyn Erro
 #[cfg(test)]
 mod tests {
 
-    use crate::constant;
+    use std::time::SystemTime;
+
+    use crate::{constant, server::analyze_rule_template};
     #[test]
     fn test_contains() {
         let qaz = "USER-agent";
@@ -224,5 +229,22 @@ mod tests {
         let wsx =
             constant::clash_constant::FORMAT_RULE_TYPE.contains(&(qaz.to_uppercase().as_str()));
         println!("{wsx}")
+    }
+    #[tokio::test]
+    async fn test_analyze_template() {
+        let start_time = SystemTime::now();
+        let path = "https://raw.githubusercontent.com/pitfall-a/ruleClash/refs/heads/main/config.ini".to_string();
+        let proxies = vec!["美国 02".to_string(),"美国 08".to_string()];
+        match analyze_rule_template(&path, &proxies).await {
+            Ok((group,rules)) => println!("Error occurred: {:?},{:?}", group,rules),
+            Err(e) => println!("Error occurred: {}", e),
+        }
+        let end_time = SystemTime::now();
+        // 计算运行时长
+        println!("{}",end_time.duration_since(start_time).unwrap().as_millis());
+    }
+    #[test]
+    fn test_little_valid() {
+        println!("{}",(2 as f64 / 10 as f64) as f64);
     }
 }

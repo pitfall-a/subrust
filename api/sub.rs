@@ -1,5 +1,10 @@
+use chrono::Utc;
+use flate2::{write::GzEncoder, Compression};
 use sub_rust::{server::sub_server,enetity::SubInput};
 use url::form_urlencoded;
+use vercel_runtime::{Body, Request, Response};
+use std::{error::Error, io::Write};
+use vercel_runtime::run;
 // 处理 GET 请求
 async fn handle_get(req: Request) -> Result<Response<Body>, Box<dyn Error + Send + Sync>> {
     // 获取请求的 URI 并解析
@@ -23,13 +28,30 @@ async fn handle_get(req: Request) -> Result<Response<Body>, Box<dyn Error + Send
             .unwrap_or(&String::from("default_source"))
             .to_string(),
     };
-
     let resp = sub_server(sub_input).await;
+    
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(resp.body.as_bytes()).unwrap();
+    let compressed_body = encoder.finish().unwrap();
     // 返回 200 响应
     Ok(Response::builder()
         .status(resp.code)
-        .header("Content-Type", "text/plain; charset=utf-8")
-        .body(Body::from(resp.body))?)
+        .header("content-type", "text/plain;charset=utf-8")
+        .header("Content-Encoding", "gzip")
+        .header("access-control-allow-credentials", "true")
+        .header("access-control-allow-origin", "*")
+        .header("Date", Utc::now().to_rfc2822())
+        .header("alt-svc", "h3=\":443\"; ma=86400")
+        .header("cf-cache-status", "DYNAMIC")
+        .header("cf-ray", "8eb774f57f96e3a8-NRT")
+        .header("profile-update-interval", "24")
+        .header("server", "cloudflare")
+        .header("strict-transport-security", "max-age=31536000")
+        .header("subscription-userinfo", "upload=0; download=1; total=1;")
+        .header("vary", "Accept-Encoding")
+        .header("report-to", "{\"endpoints\":[{\"url\":\"https:\\/\\/a.nel.cloudflare.com\\/report\\/v4?s=d%2BThOXr5KeHdjk4%2BcGkNl9AzF7DaJoeot68JiAICHD9ELjIlVN4quOevuQDAig9UE6ztpR1Rd4TLLnwjiEeUn9DGK3RY4MzkIe3yWmqXEDqgZfOgfeeMm2u1kH8%3D\"}],\"group\":\"cf-nel\",\"max_age\":604800}")
+        .header("server-timing", "cfL4;desc=\"?proto=TCP&rtt=570&min_rtt=507&rtt_var=56&sent=22&recv=16&lost=0&retrans=0&sent_bytes=20615&recv_bytes=3095&delivery_rate=25239361&cwnd=257&unsent_bytes=0&cid=6203a5147e5d7f55&ts=11726&x=0\"")
+        .body(Body::from(compressed_body))?)
 }
 
 fn parse_query_params(
@@ -51,9 +73,6 @@ fn handle_method_not_allowed() -> Result<Response<Body>, Box<dyn Error + Send + 
         .header("Content-Type", "text/plain")
         .body(Body::from("Method Not Allowed"))?)
 }
-use vercel_runtime::{Body, Request, Response};
-use std::error::Error;
-use vercel_runtime::run;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error  + Send + Sync>> {
